@@ -1,20 +1,41 @@
 package main
 
 import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/Le-Chat99/blogAggregator/internal/database"
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
+
+type apiConfig struct {
+	DB *database.Queries
+}
 
 func main() {
 	godotenv.Load()
 	port := os.Getenv("PORT")
+	dbURL := os.Getenv("CONN")
+
 	mux := http.NewServeMux()
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	dbQueries := database.New(db)
+	cfg := apiConfig{
+		DB: dbQueries,
+	}
 
 	mux.HandleFunc("GET /v1/healthz", healthz)
 	mux.HandleFunc("GET /v1/err", errHfunc)
+	mux.HandleFunc("POST /v1/users")
+
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,
@@ -33,4 +54,18 @@ func healthz(w http.ResponseWriter, r *http.Request) {
 
 func errHfunc(w http.ResponseWriter, r *http.Request) {
 	respondWithError(w, 500, "Internal Server Error")
+}
+
+func (cfg *apiConfig) userAdd(w http.ResponseWriter, r *http.Request) {
+	type Params struct {
+		Name string `json:"name"`
+	}
+	decoder := json.NewDecoder(r.Body)
+	params := Params{}
+	err = decoder.Decode(&params)
+	if err != nil {
+		msg := fmt.Sprintf("Error decoding parameters: %s", err)
+		respondWithError(w, http.StatusInternalServerError, msg)
+		return
+	}
 }
