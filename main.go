@@ -83,4 +83,5 @@ func (cfg *apiConfig) userAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondWithJSON(w, http.StatusCreated, createdUser)
+	fmt.Println(createdUser.ApiKey)
 }
