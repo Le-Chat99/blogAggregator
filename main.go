@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Le-Chat99/blogAggregator/internal/database"
@@ -38,6 +40,7 @@ func main() {
 	mux.HandleFunc("GET /v1/healthz", healthz)
 	mux.HandleFunc("GET /v1/err", errHfunc)
 	mux.HandleFunc("POST /v1/users", cfg.userAdd)
+	mux.HandleFunc("GET /v1/users", cfg.getUser)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
@@ -83,5 +86,36 @@ func (cfg *apiConfig) userAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondWithJSON(w, http.StatusCreated, createdUser)
-	fmt.Println(createdUser.ApiKey)
+	fmt.Println(createdUser.ApiKey) //debug delete later
+}
+
+func GetBearerKey(headers http.Header) (string, error) {
+	authHeader := headers.Get("Authorization")
+	if authHeader == "" {
+		return "", errors.New("not auth header included in request")
+	}
+	splitAuth := strings.Split(authHeader, " ")
+	if len(splitAuth) < 2 || splitAuth[0] != "ApiKey" {
+		return "", errors.New("malformed authorization header")
+	}
+
+	return splitAuth[1], nil
+}
+
+func (cfg *apiConfig) getUser(w http.ResponseWriter, r *http.Request) {
+	apiKey, err := GetBearerKey(r.Header)
+	if err != nil {
+		msg := fmt.Sprintf("Error get apikey: %s", err)
+		respondWithError(w, http.StatusUnauthorized, msg)
+		return
+	}
+	user, err := cfg.DB.GetUser(context.Background(), apiKey)
+
+	if err != nil {
+		msg := fmt.Sprintf("Error get user fail: %s", err)
+		respondWithError(w, http.StatusConflict, msg)
+		return
+	}
+	respondWithJSON(w, http.StatusOK, user)
+	fmt.Println(user) //debug delete later
 }
