@@ -42,6 +42,7 @@ func main() {
 	mux.HandleFunc("POST /v1/users", cfg.userAdd)
 	mux.HandleFunc("GET /v1/users", cfg.middlewareAuth(cfg.getUser))
 	mux.HandleFunc("POST /v1/feeds", cfg.middlewareAuth(cfg.postFeeds))
+	mux.HandleFunc("GET /v1/feeds", cfg.getAllFeeds)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
@@ -106,4 +107,21 @@ func (cfg *apiConfig) postFeeds(w http.ResponseWriter, r *http.Request, u databa
 		return
 	}
 	respondWithJSON(w, http.StatusCreated, databaseFeedToFeed(feed))
+}
+
+func (cfg *apiConfig) getAllFeeds(w http.ResponseWriter, r *http.Request) {
+	feeds, err := cfg.DB.GetAllFeeds(context.Background())
+	if err != nil {
+		msg := fmt.Sprintf("Error get feed fail: %s", err)
+		respondWithError(w, http.StatusInternalServerError, msg)
+		return
+	}
+	type AllFeeds struct {
+		Feeds []Feed `json:"all_feeds"`
+	}
+	allFeeds := AllFeeds{}
+	for _, f := range feeds {
+		allFeeds.Feeds = append(allFeeds.Feeds, databaseFeedToFeed(f))
+	}
+	respondWithJSON(w, http.StatusOK, allFeeds)
 }
