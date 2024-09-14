@@ -40,7 +40,8 @@ func main() {
 	mux.HandleFunc("GET /v1/healthz", healthz)
 	mux.HandleFunc("GET /v1/err", errHfunc)
 	mux.HandleFunc("POST /v1/users", cfg.userAdd)
-	mux.HandleFunc("GET /v1/users", cfg.getUser)
+	mux.HandleFunc("GET /v1/users", cfg.middlewareAuth(cfg.getUser))
+	mux.HandleFunc("POST /v1/feeds", cfg.middlewareAuth(cfg.postFeeds))
 
 	srv := &http.Server{
 		Addr:    ":" + port,
@@ -62,33 +63,6 @@ func errHfunc(w http.ResponseWriter, r *http.Request) {
 	respondWithError(w, 500, "Internal Server Error")
 }
 
-func (cfg *apiConfig) userAdd(w http.ResponseWriter, r *http.Request) {
-	type Params struct {
-		Name string `json:"name"`
-	}
-	decoder := json.NewDecoder(r.Body)
-	params := Params{}
-	err := decoder.Decode(&params)
-	if err != nil {
-		msg := fmt.Sprintf("Error decoding parameters: %s", err)
-		respondWithError(w, http.StatusInternalServerError, msg)
-		return
-	}
-	user := database.CreateUserParams{
-		ID:        uuid.New(),
-		UpdatedAt: time.Now(),
-		Name:      params.Name,
-	}
-	createdUser, err := cfg.DB.CreateUser(context.Background(), user)
-	if err != nil {
-		msg := fmt.Sprintf("Error create user fail: %s", err)
-		respondWithError(w, http.StatusInternalServerError, msg)
-		return
-	}
-	respondWithJSON(w, http.StatusCreated, createdUser)
-	fmt.Println(createdUser.ApiKey) //debug delete later
-}
-
 func GetBearerKey(headers http.Header) (string, error) {
 	authHeader := headers.Get("Authorization")
 	if authHeader == "" {
@@ -102,20 +76,34 @@ func GetBearerKey(headers http.Header) (string, error) {
 	return splitAuth[1], nil
 }
 
-func (cfg *apiConfig) getUser(w http.ResponseWriter, r *http.Request) {
-	apiKey, err := GetBearerKey(r.Header)
+func (cfg *apiConfig) postFeeds(w http.ResponseWriter, r *http.Request, u database.User) {
+	type Params struct {
+		Name string `json:"name"`
+		Url  string `json:"url"`
+	}
+	decoder := json.NewDecoder(r.Body)
+	params := Params{}
+	err := decoder.Decode(&params)
 	if err != nil {
-		msg := fmt.Sprintf("Error get apikey: %s", err)
-		respondWithError(w, http.StatusUnauthorized, msg)
+		msg := fmt.Sprintf("Error decoding parameters: %s", err)
+		respondWithError(w, http.StatusInternalServerError, msg)
 		return
 	}
-	user, err := cfg.DB.GetUser(context.Background(), apiKey)
 
+	createfeed := database.CreateFeedParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Name:      params.Name,
+		Url:       params.Url,
+		UserID:    u.ID,
+	}
+
+	feed, err := cfg.DB.CreateFeed(context.Background(), createfeed)
 	if err != nil {
-		msg := fmt.Sprintf("Error get user fail: %s", err)
-		respondWithError(w, http.StatusConflict, msg)
+		msg := fmt.Sprintf("Error create feed fail: %s", err)
+		respondWithError(w, http.StatusInternalServerError, msg)
 		return
 	}
-	respondWithJSON(w, http.StatusOK, user)
-	fmt.Println(user) //debug delete later
+	respondWithJSON(w, http.StatusCreated, databaseFeedToFeed(feed))
 }

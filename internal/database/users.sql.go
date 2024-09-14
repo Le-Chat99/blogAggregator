@@ -13,8 +13,8 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, created_at, updated_at, name)
-VALUES ($1, $2, $3, $4)
+INSERT INTO users (id, created_at, updated_at, name, api_key)
+VALUES ($1, $2, $3, $4, encode(sha256(random()::text::bytea), 'hex'))
 RETURNING id, created_at, updated_at, name, api_key
 `
 
@@ -43,30 +43,19 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
-const getUser = `-- name: GetUser :one
-SELECT id, created_at, updated_at, name, api_key, name FROM users
-WHERE api_key = $1
+const getUserByAPIKey = `-- name: GetUserByAPIKey :one
+SELECT id, created_at, updated_at, name, api_key FROM users WHERE api_key = $1
 `
 
-type GetUserRow struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Name      string
-	ApiKey    string
-	Name_2    string
-}
-
-func (q *Queries) GetUser(ctx context.Context, apiKey string) (GetUserRow, error) {
-	row := q.db.QueryRowContext(ctx, getUser, apiKey)
-	var i GetUserRow
+func (q *Queries) GetUserByAPIKey(ctx context.Context, apiKey string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByAPIKey, apiKey)
+	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Name,
 		&i.ApiKey,
-		&i.Name_2,
 	)
 	return i, err
 }
