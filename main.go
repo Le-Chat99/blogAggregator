@@ -1,19 +1,14 @@
 package main
 
 import (
-	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/Le-Chat99/blogAggregator/internal/database"
-	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
@@ -78,126 +73,4 @@ func GetBearerKey(headers http.Header) (string, error) {
 	}
 
 	return splitAuth[1], nil
-}
-
-func (cfg *apiConfig) postFeeds(w http.ResponseWriter, r *http.Request, u database.User) {
-	type Params struct {
-		Name string `json:"name"`
-		Url  string `json:"url"`
-	}
-	decoder := json.NewDecoder(r.Body)
-	params := Params{}
-	err := decoder.Decode(&params)
-	if err != nil {
-		msg := fmt.Sprintf("Error decoding parameters: %s", err)
-		respondWithError(w, http.StatusInternalServerError, msg)
-		return
-	}
-
-	createfeed := database.CreateFeedParams{
-		ID:        uuid.New(),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Name:      params.Name,
-		Url:       params.Url,
-		UserID:    u.ID,
-	}
-
-	feed, err := cfg.DB.CreateFeed(context.Background(), createfeed)
-	if err != nil {
-		msg := fmt.Sprintf("Error create feed fail: %s", err)
-		respondWithError(w, http.StatusInternalServerError, msg)
-		return
-	}
-
-	createFeedFollowed := database.CreateFollowParams{
-		ID:        uuid.New(),
-		FeedID:    createfeed.ID,
-		UserID:    u.ID,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-	_, err = cfg.DB.CreateFollow(context.Background(), createFeedFollowed)
-	if err != nil {
-		msg := fmt.Sprintf("Error create follow fail: %s", err)
-		respondWithError(w, http.StatusInternalServerError, msg)
-		return
-	}
-
-	respondWithJSON(w, http.StatusCreated, databaseFeedToFeed(feed))
-}
-
-func (cfg *apiConfig) getAllFeeds(w http.ResponseWriter, r *http.Request) {
-	feeds, err := cfg.DB.GetAllFeeds(context.Background())
-	if err != nil {
-		msg := fmt.Sprintf("Error get feed fail: %s", err)
-		respondWithError(w, http.StatusInternalServerError, msg)
-		return
-	}
-	type AllFeeds struct {
-		Feeds []Feed `json:"all_feeds"`
-	}
-	allFeeds := AllFeeds{}
-	for _, f := range feeds {
-		allFeeds.Feeds = append(allFeeds.Feeds, databaseFeedToFeed(f))
-	}
-
-	respondWithJSON(w, http.StatusOK, allFeeds)
-}
-
-func (cfg *apiConfig) postFeedFollow(w http.ResponseWriter, r *http.Request, u database.User) {
-	type Params struct {
-		FeedID uuid.UUID `json:"feed_id"`
-	}
-	decoder := json.NewDecoder(r.Body)
-	params := Params{}
-	err := decoder.Decode(&params)
-	if err != nil {
-		msg := fmt.Sprintf("Error decoding parameters: %s", err)
-		respondWithError(w, http.StatusInternalServerError, msg)
-		return
-	}
-	createFeedFollowed := database.CreateFollowParams{
-		ID:        uuid.New(),
-		FeedID:    params.FeedID,
-		UserID:    u.ID,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-	feedfollowed, err := cfg.DB.CreateFollow(context.Background(), createFeedFollowed)
-	if err != nil {
-		msg := fmt.Sprintf("Error create follow fail: %s", err)
-		respondWithError(w, http.StatusInternalServerError, msg)
-		return
-	}
-	respondWithJSON(w, http.StatusCreated, databaseFeedFollowedToFeedFollowed((feedfollowed)))
-}
-
-func (cfg *apiConfig) deleteFeedFollow(w http.ResponseWriter, r *http.Request) {
-	sid := r.PathValue("id")
-	id, err := uuid.Parse(sid)
-	if err != nil {
-		msg := fmt.Sprintf("Invalid id input: %s", err)
-		respondWithError(w, http.StatusPartialContent, msg)
-		return
-	}
-	cfg.DB.DeleteFollow(context.Background(), id)
-}
-
-func (cfg *apiConfig) getFeedFollow(w http.ResponseWriter, r *http.Request, u database.User) {
-	follows, err := cfg.DB.GetFollowByAPIKey(context.Background(), u.ID)
-	if err != nil {
-		msg := fmt.Sprintf("Error create follow fail: %s", err)
-		respondWithError(w, http.StatusInternalServerError, msg)
-		return
-	}
-	type FollowedFeeds struct {
-		FollowedFeeds []FeedFollowed `json:"followed_feeds"`
-	}
-	var Followlist FollowedFeeds
-	for _, follow := range follows {
-		Followlist.FollowedFeeds = append(Followlist.FollowedFeeds, databaseFeedFollowedToFeedFollowed(follow))
-	}
-
-	respondWithJSON(w, http.StatusOK, Followlist)
 }
