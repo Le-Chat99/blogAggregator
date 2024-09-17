@@ -53,7 +53,7 @@ type FeedFollowed struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-func databaseFeedFollowedToFeedFollowed(feed database.FeedFollowed) FeedFollowed {
+func databaseFeedFollowedToFeedFollowed(feed database.FeedFollow) FeedFollowed {
 	return FeedFollowed{
 		ID:        feed.ID,
 		FeedID:    feed.FeedID,
@@ -61,4 +61,23 @@ func databaseFeedFollowedToFeedFollowed(feed database.FeedFollowed) FeedFollowed
 		CreatedAt: feed.CreatedAt,
 		UpdatedAt: feed.UpdatedAt,
 	}
+}
+
+func databaseFeedFollowsToFeedFollows(feedFollows []database.FeedFollow) []FeedFollowed {
+	result := make([]FeedFollowed, len(feedFollows))
+	for i, feedFollow := range feedFollows {
+		result[i] = databaseFeedFollowedToFeedFollowed(feedFollow)
+	}
+	return result
+}
+
+type FeedData struct {
+	Channel struct {
+		Title       string
+		Description string
+		Items       []struct {
+			Title       string
+			Description string
+		} `xml:"item"`
+	} `xml:"channel"`
 }

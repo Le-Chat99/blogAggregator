@@ -13,41 +13,40 @@ import (
 )
 
 const createFollow = `-- name: CreateFollow :one
-INSERT INTO feed_followed (id, feed_id, user_id, created_at, updated_at)
+INSERT INTO feed_follows (id, created_at, updated_at, user_id, feed_id)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, feed_id, user_id, created_at, updated_at
+RETURNING id, created_at, updated_at, user_id, feed_id
 `
 
 type CreateFollowParams struct {
 	ID        uuid.UUID
-	FeedID    uuid.UUID
-	UserID    uuid.UUID
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	UserID    uuid.UUID
+	FeedID    uuid.UUID
 }
 
-func (q *Queries) CreateFollow(ctx context.Context, arg CreateFollowParams) (FeedFollowed, error) {
+func (q *Queries) CreateFollow(ctx context.Context, arg CreateFollowParams) (FeedFollow, error) {
 	row := q.db.QueryRowContext(ctx, createFollow,
 		arg.ID,
-		arg.FeedID,
-		arg.UserID,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.UserID,
+		arg.FeedID,
 	)
-	var i FeedFollowed
+	var i FeedFollow
 	err := row.Scan(
 		&i.ID,
-		&i.FeedID,
-		&i.UserID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
+		&i.FeedID,
 	)
 	return i, err
 }
 
 const deleteFollow = `-- name: DeleteFollow :exec
-DELETE FROM feed_followed
-WHERE id = $1
+DELETE FROM feed_follows WHERE id = $1
 `
 
 func (q *Queries) DeleteFollow(ctx context.Context, id uuid.UUID) error {
@@ -56,25 +55,25 @@ func (q *Queries) DeleteFollow(ctx context.Context, id uuid.UUID) error {
 }
 
 const getFollowByAPIKey = `-- name: GetFollowByAPIKey :many
-SELECT id, feed_id, user_id, created_at, updated_at FROM feed_followed
+SELECT id, created_at, updated_at, user_id, feed_id FROM feed_follows
 WHERE user_id = $1
 `
 
-func (q *Queries) GetFollowByAPIKey(ctx context.Context, userID uuid.UUID) ([]FeedFollowed, error) {
+func (q *Queries) GetFollowByAPIKey(ctx context.Context, userID uuid.UUID) ([]FeedFollow, error) {
 	rows, err := q.db.QueryContext(ctx, getFollowByAPIKey, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []FeedFollowed
+	var items []FeedFollow
 	for rows.Next() {
-		var i FeedFollowed
+		var i FeedFollow
 		if err := rows.Scan(
 			&i.ID,
-			&i.FeedID,
-			&i.UserID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UserID,
+			&i.FeedID,
 		); err != nil {
 			return nil, err
 		}

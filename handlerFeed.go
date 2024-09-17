@@ -33,29 +33,33 @@ func (cfg *apiConfig) postFeeds(w http.ResponseWriter, r *http.Request, u databa
 		Url:       params.Url,
 		UserID:    u.ID,
 	}
-
-	feed, err := cfg.DB.CreateFeed(context.Background(), createfeed)
+	feed, err := cfg.DB.CreateFeed(r.Context(), createfeed)
 	if err != nil {
 		msg := fmt.Sprintf("Error create feed fail: %s", err)
 		respondWithError(w, http.StatusInternalServerError, msg)
 		return
 	}
-
 	createFeedFollowed := database.CreateFollowParams{
 		ID:        uuid.New(),
-		FeedID:    createfeed.ID,
-		UserID:    u.ID,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
+		UserID:    u.ID,
+		FeedID:    feed.ID,
 	}
-	_, err = cfg.DB.CreateFollow(context.Background(), createFeedFollowed)
+	f, err := cfg.DB.CreateFollow(r.Context(), createFeedFollowed)
 	if err != nil {
 		msg := fmt.Sprintf("Error create follow fail: %s", err)
 		respondWithError(w, http.StatusInternalServerError, msg)
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, databaseFeedToFeed(feed))
+	respondWithJSON(w, http.StatusCreated, struct {
+		Feed Feed         `json:"feed"`
+		FF   FeedFollowed `json:"feed_follow"`
+	}{
+		Feed: databaseFeedToFeed(feed),
+		FF:   databaseFeedFollowedToFeedFollowed(f),
+	})
 }
 
 func (cfg *apiConfig) getAllFeeds(w http.ResponseWriter, r *http.Request) {

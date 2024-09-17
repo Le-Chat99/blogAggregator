@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -29,7 +28,7 @@ func (cfg *apiConfig) userAdd(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt: time.Now(),
 		Name:      params.Name,
 	}
-	createdUser, err := cfg.DB.CreateUser(context.Background(), user)
+	createdUser, err := cfg.DB.CreateUser(r.Context(), user)
 	if err != nil {
 		msg := fmt.Sprintf("Error create user fail: %s", err)
 		respondWithError(w, http.StatusInternalServerError, msg)

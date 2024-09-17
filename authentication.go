@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -20,7 +19,7 @@ func (cfg *apiConfig) middlewareAuth(handler authedHandler) http.HandlerFunc {
 			respondWithError(w, http.StatusUnauthorized, msg)
 			return
 		}
-		user, err := cfg.DB.GetUserByAPIKey(context.Background(), apiKey)
+		user, err := cfg.DB.GetUserByAPIKey(r.Context(), apiKey)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				respondWithError(w, http.StatusUnauthorized, "Invalid API key")
