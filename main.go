@@ -35,13 +35,18 @@ func main() {
 
 	mux.HandleFunc("GET /v1/healthz", healthz)
 	mux.HandleFunc("GET /v1/err", errHfunc)
+
 	mux.HandleFunc("POST /v1/users", cfg.userAdd)
 	mux.HandleFunc("GET /v1/users", cfg.middlewareAuth(cfg.getUser))
+
 	mux.HandleFunc("POST /v1/feeds", cfg.middlewareAuth(cfg.postFeeds))
 	mux.HandleFunc("GET /v1/feeds", cfg.getAllFeeds)
+
 	mux.HandleFunc("POST /v1/feed_follows", cfg.middlewareAuth(cfg.postFeedFollow))
 	mux.HandleFunc("GET /v1/feed_follows", cfg.middlewareAuth(cfg.getFeedFollow))
 	mux.HandleFunc("DELETE /v1/feed_follows/{id}", cfg.deleteFeedFollow)
+
+	mux.HandleFunc("GET /v1/posts?limit={limit}", cfg.middlewareAuth(cfg.getPost))
 
 	srv := &http.Server{
 		Addr:    ":" + port,
