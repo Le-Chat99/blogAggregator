@@ -33,7 +33,7 @@ func (cfg *apiConfig) postFeeds(w http.ResponseWriter, r *http.Request, u databa
 		Url:       params.Url,
 		UserID:    u.ID,
 	}
-	feed, err := cfg.DB.CreateFeed(r.Context(), createfeed)
+	feed, err := cfg.DB.CreateFeed(context.Background(), createfeed)
 	if err != nil {
 		msg := fmt.Sprintf("Error create feed fail: %s", err)
 		respondWithError(w, http.StatusInternalServerError, msg)
@@ -46,7 +46,7 @@ func (cfg *apiConfig) postFeeds(w http.ResponseWriter, r *http.Request, u databa
 		UserID:    u.ID,
 		FeedID:    feed.ID,
 	}
-	f, err := cfg.DB.CreateFollow(r.Context(), createFeedFollowed)
+	f, err := cfg.DB.CreateFollow(context.Background(), createFeedFollowed)
 	if err != nil {
 		msg := fmt.Sprintf("Error create follow fail: %s", err)
 		respondWithError(w, http.StatusInternalServerError, msg)

@@ -50,7 +50,7 @@ func main() {
 
 	const collectionConcurrency = 10
 	const collectionInterval = time.Minute
-	go FecthNTime(dbQueries, collectionConcurrency, collectionInterval)
+	go FecthNTime(cfg.DB, collectionConcurrency, collectionInterval)
 
 	log.Printf("Serving on port: %s\n", port)
 	log.Fatal(srv.ListenAndServe())

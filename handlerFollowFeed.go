@@ -25,12 +25,12 @@ func (cfg *apiConfig) postFeedFollow(w http.ResponseWriter, r *http.Request, u d
 	}
 	createFeedFollowed := database.CreateFollowParams{
 		ID:        uuid.New(),
-		FeedID:    params.FeedID,
-		UserID:    u.ID,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
+		UserID:    u.ID,
+		FeedID:    params.FeedID,
 	}
-	feedfollowed, err := cfg.DB.CreateFollow(context.Background(), createFeedFollowed)
+	feedfollowed, err := cfg.DB.CreateFollow(r.Context(), createFeedFollowed)
 	if err != nil {
 		msg := fmt.Sprintf("Error create follow fail: %s", err)
 		respondWithError(w, http.StatusInternalServerError, msg)
@@ -51,7 +51,7 @@ func (cfg *apiConfig) deleteFeedFollow(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) getFeedFollow(w http.ResponseWriter, r *http.Request, u database.User) {
-	follows, err := cfg.DB.GetFollowByAPIKey(context.Background(), u.ID)
+	follows, err := cfg.DB.GetFollowByAPIKey(r.Context(), u.ID)
 	if err != nil {
 		msg := fmt.Sprintf("Error create follow fail: %s", err)
 		respondWithError(w, http.StatusInternalServerError, msg)

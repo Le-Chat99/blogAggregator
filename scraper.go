@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/xml"
 	"io"
 	"log"
@@ -10,7 +11,10 @@ import (
 	"time"
 
 	"github.com/Le-Chat99/blogAggregator/internal/database"
+	"github.com/google/uuid"
 )
+
+const date_format = "Mon, 02 Jan 2006 15:04:05 -0700"
 
 type RSSFeed struct {
 	Channel struct {
@@ -65,8 +69,36 @@ func FectchOne(db *database.Queries, wg *sync.WaitGroup, feed database.Feed) {
 		log.Printf("Couldn't collect feed %s: %v", feed.Name, err)
 		return
 	}
+
 	for _, item := range feedData.Channel.Item {
-		log.Println("Found post", item.Title)
+		des := sql.NullString{
+			String: item.Description,
+			Valid:  true,
+		}
+		pubDate, err := time.Parse(date_format, item.PubDate)
+		if err != nil {
+			log.Printf("Couldn't parse pubDate %s: %v", item.PubDate, err)
+			continue
+		}
+		date := sql.NullTime{
+			Time:  pubDate,
+			Valid: true,
+		}
+		postCreat := database.CreatePostParams{
+			ID:          uuid.New(),
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+			Title:       item.Title,
+			Url:         item.Link,
+			Description: des,
+			PublishedAt: date,
+			FeedID:      feed.ID,
+		}
+		_, err = db.CreatePost(context.Background(), postCreat)
+		if err != nil {
+			log.Printf("Couldn't create post: %v", err)
+			continue
+		}
 	}
 	log.Printf("Feed %s collected, %v posts found", feed.Name, len(feedData.Channel.Item))
 }
