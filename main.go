@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Le-Chat99/blogAggregator/internal/database"
 	"github.com/joho/godotenv"
@@ -46,6 +47,10 @@ func main() {
 		Addr:    ":" + port,
 		Handler: mux,
 	}
+
+	const collectionConcurrency = 10
+	const collectionInterval = time.Minute
+	go FecthNTime(dbQueries, collectionConcurrency, collectionInterval)
 
 	log.Printf("Serving on port: %s\n", port)
 	log.Fatal(srv.ListenAndServe())
